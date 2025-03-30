@@ -1,0 +1,380 @@
+{
+  "name": "GitHub Auto PR",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "GitHub Modification Request",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "GitHub Username",
+              "placeholder": "fygure",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "GitHub Repository URL",
+              "placeholder": "https://github.com/fygure/FASTAPI",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Did you add \"fygure\" to Repository?",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Yes"
+                  },
+                  {
+                    "option": "No"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        160
+      ],
+      "id": "208e4de2-9279-4e0d-876a-fb6e047ff2f2",
+      "name": "On form submission",
+      "webhookId": "f856ab19-598a-41e6-b2cd-56acb1e9bd3a"
+    },
+    {
+      "parameters": {
+        "errorMessage": "No Repository Permissions!"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ],
+      "id": "b1b21761-9c50-45fb-a03c-e48d464b135f",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.full_name }}/git/trees/main",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "recursive",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        -60
+      ],
+      "id": "9dd1a69c-ce97-4aa1-9098-03fcfa0cd0e5",
+      "name": "Retrieve Repository Files",
+      "alwaysOutputData": true,
+      "executeOnce": false,
+      "retryOnFail": false,
+      "credentials": {
+        "githubApi": {
+          "id": "X0zOiUF9zyoYnwYd",
+          "name": "Fygure's Github Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "operation": "get",
+        "owner": {
+          "__rl": true,
+          "value": "={{ $json['GitHub Username'] }}",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "={{ $json['GitHub Repository URL'] }}",
+          "mode": "url"
+        }
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -60
+      ],
+      "id": "50fa61de-cb96-4034-afd9-7a9438fbd0c1",
+      "name": "Get GitHub Repository Details",
+      "alwaysOutputData": true,
+      "credentials": {
+        "githubApi": {
+          "id": "X0zOiUF9zyoYnwYd",
+          "name": "Fygure's Github Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "51afe3a4-3495-44a7-9671-de8264a724ff",
+              "leftValue": "={{ $json['GitHub Repository URL'] }}",
+              "rightValue": "/\\b(?:https?:\\/\\/)?(?:www\\.)?github\\.com\\/[A-Za-z0-9_.-]+(?:\\/[A-Za-z0-9_.-]+)*\\b/i",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        160
+      ],
+      "id": "003d1d24-c858-46d4-a7f1-ddad7cd4aecb",
+      "name": "Check valid URL",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json['Did you add \"fygure\" to Repository?'] }}",
+                    "rightValue": "Yes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "37c1f3e4-2187-4a8f-9b8c-ed3fe2fd9ce2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Yes Repo Perms"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8bdfd72e-f6f3-4a01-b548-ca93e33081b9",
+                    "leftValue": "={{ $json['Did you add \"fygure\" to Repository?'] }}",
+                    "rightValue": "No",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No Repo Perms"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        240,
+        160
+      ],
+      "id": "603abe2a-1fb9-4fa7-be69-7b73c0786d9a",
+      "name": "Permission Router"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "List out each path in paths"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        1060,
+        -60
+      ],
+      "id": "e0021569-a0f4-463c-b21d-ff1112976d6f",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        180
+      ],
+      "id": "acde6564-811e-404c-b6ee-875265494f63",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "xHuYe0MDGOs9IpBW",
+          "name": "Local Ollama service"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\nlet pathList = [];\n\ninputItems.forEach(item => {\n  // Check if 'tree' exists and is an array\n  if (item.json.tree && Array.isArray(item.json.tree)) {\n    const paths = item.json.tree.map(node => node.path);\n    // Add all paths from this item to the pathList array\n    pathList.push(...paths);\n  }\n});\n\n// Log the complete list of paths\nconsole.log(pathList);\n\n// Optionally, you can return a new item with the list of paths\nreturn [{ json: { paths: pathList } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        -60
+      ],
+      "id": "e4d2eb40-567a-41c8-8add-e50b609f1efa",
+      "name": "Custom Parse/Filter"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Check valid URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get GitHub Repository Details": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Repository Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check valid URL": {
+      "main": [
+        [
+          {
+            "node": "Permission Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Permission Router": {
+      "main": [
+        [
+          {
+            "node": "Get GitHub Repository Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Repository Files": {
+      "main": [
+        [
+          {
+            "node": "Custom Parse/Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Custom Parse/Filter": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d20fa7b3-5cdc-4bd7-87cf-45a0c9d4ae24",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "ZaC58oHHGHtALW10",
+  "tags": []
+}
